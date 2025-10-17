@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  COMPLETED
+  CANCELED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  AMOUNT
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  username  String    @unique
+  email     String    @unique
+  password  String
+  role      String    @default("user") 
+  createdAt DateTime  @default(now())
+
+  products  Product[]
+  orders    Order[]
+  ratings   Rating[]
+
+  buyer     Buyer?    
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  name        String
+  price       Decimal   @db.Decimal(10,2)
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+
+  ratings     Rating[]
+  orderItems  OrderItem[]
+
+  @@index([name])
+}
+
+model Voucher {
+  id             Int          @id @default(autoincrement())
+  code           String       @unique
+  discountType   DiscountType
+  discountValue  Decimal      @db.Decimal(10,2)
+  minOrderValue  Decimal?     @db.Decimal(10,2)
+  active         Boolean      @default(true)
+  startAt        DateTime?
+  endAt          DateTime?
+  usageLimit     Int?
+  usedCount      Int          @default(0)
+
+  orders         Order[]
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now()) @updatedAt
+
+  @@index([active, startAt, endAt])
+  @@index([code])
+}
+
+model Order {
+  id            Int          @id @default(autoincrement())
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id])
+
+  status        OrderStatus  @default(PENDING)
+  subtotal      Decimal      @db.Decimal(10,2)
+  discount      Decimal      @db.Decimal(10,2) @default(0)
+  total         Decimal      @db.Decimal(10,2)
+
+  voucherId     Int?
+  voucher       Voucher?     @relation(fields: [voucherId], references: [id])
+
+  items         OrderItem[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
+
+  @@index([userId, status])
+  @@index([voucherId])
+}
+
+model OrderItem {
+  id         Int       @id @default(autoincrement())
+  orderId    Int
+  productId  Int
+
+  quantity   Int       @default(1)
+  unitPrice  Decimal   @db.Decimal(10,2)
+  subtotal   Decimal   @db.Decimal(10,2)
+
+  order      Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product   @relation(fields: [productId], references: [id])
+
+  createdAt  DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Rating {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  productId  Int
+  value      Int
+  comment    String?
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@index([userId])
+}
+
+
+model Buyer {
+  id           Int      @id                       
+  user         User     @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  fullName     String?
+  phone        String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  province     String?
+  postalCode   String?
+  country      String?  
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+}

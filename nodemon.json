@@ -1,0 +1,6 @@
+{
+  "watch": ["server.js", "routes", "controllers", "middleware"],
+  "ext": "js,json",
+  "ignore": ["node_modules", ".prisma"],
+  "exec": "node server.js"
+}
